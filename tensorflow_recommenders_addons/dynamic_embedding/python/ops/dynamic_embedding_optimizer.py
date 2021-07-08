@@ -91,8 +91,7 @@ def DynamicEmbeddingOptimizer(self):
         with ops.colocate_with(None, ignore_existing=True):
           _slots = [self.get_slot(var, _s) for _s in self.get_slot_names()]
           # Add the optimizer slots to restricting list.
-          if var.params.restrict_policy is not None:
-            var.params.restrict_policy._track_optimizer_slots(_slots)
+          var._track_optimizer_slots(_slots)
 
           with ops.control_dependencies([grad]):
             _before = [var.read_value()] + [_s.read_value() for _s in _slots]
@@ -305,10 +304,11 @@ def create_slots(primary, init, slot_name, op_name):
     scope_store._vars[full_name] = slot_variable_
 
   slot_trainable = None
+  tw_name = slot_name + '-' + str(id(primary))
   _, slot_trainable = de.embedding_lookup(
       params=scope_store._vars[full_name],
       ids=params_ids_,
-      name=slot_name,
+      name=tw_name,
       return_trainable=True,
   )
 

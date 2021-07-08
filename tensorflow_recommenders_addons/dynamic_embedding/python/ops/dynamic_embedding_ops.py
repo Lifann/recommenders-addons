@@ -46,6 +46,8 @@ from tensorflow.python.util import compat
 from tensorflow.python.util.tf_export import tf_export
 
 
+# TODO(Lifann) Somehow it cannot be saved by tf.saved_model.save in TF2.
+# And in inference we do not need the `assign` procedure.
 class TrainableWrapper(resource_variable_ops.ResourceVariable):
   """
     This class is a trainable wrapper of Dynamic Embedding,
@@ -81,10 +83,11 @@ class TrainableWrapper(resource_variable_ops.ResourceVariable):
     self.prefetch_values_op = None
     self.model_mode = kwargs.get("model_mode")
     kwargs.pop("model_mode")
+    self._slots_track = []
     super(TrainableWrapper, self).__init__(*args, **kwargs)
 
-  def prefetch_values(self):
-    if self.prefetch_values_op is None:
+  def prefetch_values(self, update=False):
+    if (self.prefetch_values_op is None) or update:
       self.prefetch_values_op = self.transform(self.params.lookup(self.ids))
     return self.prefetch_values_op
 
@@ -422,6 +425,23 @@ class TrainableWrapper(resource_variable_ops.ResourceVariable):
       _result = self._clip(_result, self.ids, self.max_norm)
     return _result
 
+  def _track_optimizer_slots(self, slots):
+    if not all(isinstance(s, TrainableWrapper) for s in slots):
+      raise TypeError('Can only track TrainableWrapper slots, but get {}'.format([type(s) for s in slots]))
+    identifiers = [id(s) for s in self._slots_track]
+    for s in slots:
+      if id(s) not in identifiers:
+        self._slots_track.append(s)
+
+    if self.params.restrict_policy is not None:
+      self.params.restrict_policy._track_params_from_optimizer_slots(slots)
+
+  def _reset_ids(self, ids):
+    self.ids = ids
+    self.prefetch_values(update=True)
+    for s in self._slots_track:
+      s._reset_ids(ids)
+
 
 def embedding_lookup(
     params,
@@ -443,7 +463,8 @@ def embedding_lookup(
       params: A dynamic_embedding.Variable instance.
       ids: A tensor with any shape as same dtype of params.key_dtype.
       partition_strategy: No used, for API compatiblity with `nn.emedding_lookup`.
-      name: A name for the operation (optional).
+      name: A name for the operation. Name is optional in graph mode and required
+        in eager mode.
       validate_indices: No used, just for compatible with nn.embedding_lookup .
       max_norm: If not `None`, each embedding is clipped if its l2-norm is larger
         than this value.
@@ -494,14 +515,32 @@ def embedding_lookup(
       collections = [ops.GraphKeys.LOCAL_VARIABLES]
       if params.trainable:
         collections += [ops.GraphKeys.TRAINABLE_VARIABLES]
-      trainable_ = de.TrainableWrapper(params,
-                                       ids,
-                                       max_norm=max_norm,
-                                       initial_value=initial_value,
-                                       dtype=params.value_dtype,
-                                       trainable=params.trainable,
-                                       collections=collections,
-                                       model_mode=ModelMode.CURRENT_SETTING)
+
+      def _create_trainable(trainable_name):
+        return de.TrainableWrapper(params,
+                                   ids,
+                                   max_norm=max_norm,
+                                   initial_value=initial_value,
+                                   dtype=params.value_dtype,
+                                   trainable=params.trainable,
+                                   collections=collections,
+                                   model_mode=ModelMode.CURRENT_SETTING,
+                                   name=trainable_name)
+
+      if context.executing_eagerly():
+        if name is not None:
+          trainable_name = full_name + name
+        else:
+          raise ValueError('Must specify a name for dynamic_embedding.embedding_lookup when running eagerly.')
+        trainable_ = params._trainable_store.get(trainable_name, None)
+        if trainable_ is None:
+          trainable_ = _create_trainable(trainable_name)
+          params._trainable_store[trainable_name] = trainable_
+        else:
+          trainable_._reset_ids(ids)
+      else:
+        trainable_ = _create_trainable(None)
+
       embeddings = array_ops.identity(trainable_)
       embeddings = array_ops.reshape(embeddings, shape=embeddings_shape)
 
@@ -523,7 +562,8 @@ def embedding_lookup_unique(params,
     params: A dynamic_embedding.Variable instance.
     ids: a tensor with any shape as same dtype of params.key_dtype.
     partition_strategy: No used, for API compatiblity with `nn.emedding_lookup`.
-    name: A name for the operation (optional).
+    name: A name for the operation. Name is optional in graph mode and required
+      in eager mode.
     validate_indices: No used, just for compatible with nn.embedding_lookup .
     max_norm: If not `None`, each embedding is clipped if its l2-norm is larger
       than this value.
@@ -589,7 +629,8 @@ def embedding_lookup_sparse(
         indicate all weights should be taken to be 1. If specified, `sp_weights`
         must have exactly the same shape and indices as `sp_ids`.
       partition_strategy: No used.
-      name: Optional name for the op.
+      name: a name for the operation. Name is optional in graph mode and required
+        in eager mode.
       combiner: A string specifying the reduction op. Currently "mean", "sqrtn"
         and "sum" are supported. "sum" computes the weighted sum of the embedding
         results for each row. "mean" is the weighted sum divided by the total
@@ -771,7 +812,8 @@ def safe_embedding_lookup_sparse(
         entry. Currently "mean", "sqrtn" and "sum" are supported, with "mean" the
         default.
       default_id: The id to use for an entry with no features.
-      name: A name for this operation (optional).
+      name: A name for this operation. Name is optional in graph mode and required
+        in eager mode.
       partition_strategy: A string specifying the partitioning strategy. Currently
         `"div"` and `"mod"` are supported. Default is `"div"`.
       max_norm: If not `None`, all embeddings are l2-normalized to max_norm before

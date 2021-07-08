@@ -131,6 +131,10 @@ class GraphKeys(object):
   TRAINABLE_DYNAMIC_EMBEDDING_VARIABLES = "trainable_dynamic_embedding_variables"
 
 
+# TODO(Lifann) Inherit from base.Trackable and implement _gather_saveables_for_checkpoint to hold
+# a dict of resources (CuckooHashTable), or inherit from trackable.TrackableResource to handle the
+# resource on worker device, and leave the interaction between CuckooHashTable in C++ (This will
+# get a more precise interface for an abstract kv_creator).
 class Variable(trackable.TrackableResource):
   """
     A Distributed version of HashTable(reference from lookup_ops.MutableHashTable)
@@ -229,6 +233,7 @@ class Variable(trackable.TrackableResource):
 
     self._tables = []
     self.size_ops = []
+    self._trainable_store = {}
     self.shard_num = len(self.devices)
     self.init_size = int(init_size)
     if restrict_policy is not None:
