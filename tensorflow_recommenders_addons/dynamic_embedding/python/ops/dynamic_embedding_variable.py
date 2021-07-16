@@ -131,11 +131,7 @@ class GraphKeys(object):
   TRAINABLE_DYNAMIC_EMBEDDING_VARIABLES = "trainable_dynamic_embedding_variables"
 
 
-# TODO(Lifann) Inherit from base.Trackable and implement _gather_saveables_for_checkpoint to hold
-# a dict of resources (CuckooHashTable), or inherit from trackable.TrackableResource to handle the
-# resource on worker device, and leave the interaction between CuckooHashTable in C++ (This will
-# get a more precise interface for an abstract kv_creator).
-class Variable(trackable.TrackableResource):
+class Variable(trackable.AutoTrackable):
   """
     A Distributed version of HashTable(reference from lookup_ops.MutableHashTable)
     It is designed to dynamically store the Sparse Weights(Parameters) of DLRMs.
@@ -276,9 +272,7 @@ class Variable(trackable.TrackableResource):
                 checkpoint=self.checkpoint,
                 init_size=int(self.init_size / self.shard_num),
             )
-
             self._tables.append(mht)
-    super(Variable, self).__init__()
 
     ops.add_to_collection(de.GraphKeys.DYNAMIC_EMBEDDING_VARIABLES, self)
     if trainable:
@@ -307,9 +301,6 @@ class Variable(trackable.TrackableResource):
       init = array_ops.fill([dim], array_ops.reshape(init, [-1])[0])
     init = math_ops.cast(init, dtype=self.value_dtype)
     return init
-
-  def _create_resource(self):
-    raise NotImplementedError
 
   def _make_name(self, table_idx):
     return "{}_mht_{}of{}".format(self.name.replace("/", "_"), table_idx + 1,
@@ -501,17 +492,6 @@ class Variable(trackable.TrackableResource):
 
     return (self.size_ops[index]
             if index is not None else math_ops.add_n(self.size_ops))
-
-  def _gather_saveables_for_checkpoint(self):
-    """For object-based checkpointing."""
-    saveables = dict()
-    for table in self._tables:
-      # pylint: disable=protected-access
-      saveable_dict = table._gather_saveables_for_checkpoint()
-      for (_, saveable) in saveable_dict.items():
-        # merge all tables saveable to one dict with their own name.
-        saveables[saveable.keywords["name"]] = saveable
-    return saveables
 
 
 @tf_export("dynamic_embedding.get_variable")
