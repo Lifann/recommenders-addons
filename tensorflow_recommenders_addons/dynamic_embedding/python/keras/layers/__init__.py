@@ -1,0 +1,4 @@
+from tensorflow_recommenders_addons.dynamic_embedding.python.keras.layers import embedding
+from tensorflow_recommenders_addons.dynamic_embedding.python.keras.layers.embedding import Embedding
+from tensorflow_recommenders_addons.dynamic_embedding.python.keras.layers.embedding import SlotEmbedding
+from tensorflow_recommenders_addons.dynamic_embedding.python.keras.layers.embedding import UnshapedEmbedding

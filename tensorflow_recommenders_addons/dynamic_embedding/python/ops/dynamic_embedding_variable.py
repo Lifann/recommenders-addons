@@ -353,9 +353,9 @@ class Variable(base.Trackable):
         init = init(shape=[1])
       else:
         try:
-          init = init()
-        except:
           init = init(shape=[1])
+        except:
+          init = init()
     try:
       init = array_ops.reshape(init, [dim])
     except:
