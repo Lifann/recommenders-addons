@@ -15,17 +15,13 @@
     View source on GitHub
   </a>
 </td></table>
-<br/>
-<br/>
-<br/>
-<br/>
 
 
 
 An optimizer wrapper to make any TensorFlow optimizer capable of training
 
 ``` python
-tfra.dynamic_embedding.DynamicEmbeddingOptimizer()
+tfra.dynamic_embedding.DynamicEmbeddingOptimizer(bp_v2=None)
 ```
 
 
@@ -37,7 +33,8 @@ Dynamic Embeddding Variables.
 
 
 * <b>`self`</b>: a TensorFlow optimizer.
-
+* <b>`bp_v2`</b>: By default is None, If None use params_var_.bp_v2 setting
+    (see `tfra.dynamic_embedding_variable.get_variable`)
 
 #### Example usage:
 

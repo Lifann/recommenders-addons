@@ -14,10 +14,6 @@
     View source on GitHub
   </a>
 </td></table>
-<br/>
-<br/>
-<br/>
-<br/>
 
 
 

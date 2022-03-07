@@ -1,5 +1,5 @@
 <div itemscope itemtype="http://developers.google.com/ReferenceObject">
-<meta itemprop="name" content="tfra.dynamic_embedding.TrainableWrapper" />
+<meta itemprop="name" content="tfra.embedding_variable.EmbeddingVariable" />
 <meta itemprop="path" content="Stable" />
 <meta itemprop="property" content="SaveSliceInfo"/>
 <meta itemprop="property" content="aggregation"/>
@@ -11,8 +11,10 @@
 <meta itemprop="property" content="handle"/>
 <meta itemprop="property" content="initial_value"/>
 <meta itemprop="property" content="initializer"/>
+<meta itemprop="property" content="invalid_key"/>
 <meta itemprop="property" content="name"/>
 <meta itemprop="property" content="op"/>
+<meta itemprop="property" content="optional_restore"/>
 <meta itemprop="property" content="shape"/>
 <meta itemprop="property" content="synchronization"/>
 <meta itemprop="property" content="trainable"/>
@@ -68,9 +70,9 @@
 <meta itemprop="property" content="is_initialized"/>
 <meta itemprop="property" content="load"/>
 <meta itemprop="property" content="numpy"/>
-<meta itemprop="property" content="prefetch_values"/>
 <meta itemprop="property" content="read_value"/>
 <meta itemprop="property" content="ref"/>
+<meta itemprop="property" content="restore"/>
 <meta itemprop="property" content="scatter_add"/>
 <meta itemprop="property" content="scatter_div"/>
 <meta itemprop="property" content="scatter_max"/>
@@ -84,22 +86,20 @@
 <meta itemprop="property" content="scatter_sub"/>
 <meta itemprop="property" content="scatter_update"/>
 <meta itemprop="property" content="set_shape"/>
-<meta itemprop="property" content="size"/>
 <meta itemprop="property" content="sparse_read"/>
 <meta itemprop="property" content="to_proto"/>
-<meta itemprop="property" content="transform"/>
-<meta itemprop="property" content="update_op"/>
+<meta itemprop="property" content="total_count"/>
 <meta itemprop="property" content="value"/>
 </div>
 
-# tfra.dynamic_embedding.TrainableWrapper
+# tfra.embedding_variable.EmbeddingVariable
 
 <!-- Insert buttons and diff -->
 
 <table class="tfo-notebook-buttons tfo-api" align="left">
 
 <td>
-  <a target="_blank" href="https://github.com/tensorflow/recommenders-addons/tree/master/tensorflow_recommenders_addons/dynamic_embedding/python/ops/dynamic_embedding_ops.py">
+  <a target="_blank" href="https://github.com/tensorflow/recommenders-addons/tree/master/tensorflow_recommenders_addons/embedding_variable/python/ops/embedding_variable_ops.py">
     <img src="https://www.tensorflow.org/images/GitHub-Mark-32px.png" />
     View source on GitHub
   </a>
@@ -107,48 +107,117 @@
 
 
 
-## Class `TrainableWrapper`
+## Class `EmbeddingVariable`
 
-This class is a trainable wrapper of Dynamic Embedding,
+Embedding Variable based on resource variable.
 
 
+
+<section class="expandable">
+  <h4 class="showalways">View aliases</h4>
+  <p>
+<b>Main aliases</b>
+<p>`tfra.embedding_variable.embedding_variable_ops.EmbeddingVariable`, `tfra.embedding_variable.python.ops.embedding_variable_ops.EmbeddingVariable`</p>
+</p>
+</section>
 
 <!-- Placeholder for "Used in" -->
-and the key role is recording the map relation between params and ids.
-inheriting from the ResourceVariable make it trainable.
+
+See the ${variables} documentation for more details.
+
+A `EmbeddingVariable` allows you to maintain state across subsequent calls to
+session.run.
+
+The `EmbeddingVariable` constructor requires an initial value for the variable,
+which can be a `Tensor` of any type and shape. The initial value defines the
+type and shape of the parted variable. After construction, the type and embedding
+dim shape of the variable are fixed. The first demension of the embedding variable
+is mutable. The shape can be changed using read_sparse methods.
+
+Unlike tf.ResourceVariable, a tf.EmbeddingVariable is mutable. the shape of the
+EmbeddingVariable means the embedding dim, user can use the APIs(sparse_read()) to
+change the whole shape of the EmbeddingVariable. When read_sparse(index=i, ...) is
+called, if the i-th embedding value doesn't exist, it will be initialized and return,
+ else it will return the i-th existing embedding value, when the embedding variable
+is updated by back propagation, the i-th embedding value will be updated or removed.
+
+#### For example:
+
+
+```python
+ a = tf.EmbeddingVariable([1.0, 3.0, 5.0])
+ a.initializer.run()
+
+ b = a.sparse_read([2])
+
+ tf.Print(b, [b]).run()  # Will print 1.0, 3.0, 5.0
+
+```
 
 <h2 id="__init__"><code>__init__</code></h2>
 
-<a target="_blank" href="https://github.com/tensorflow/recommenders-addons/tree/master/tensorflow_recommenders_addons/dynamic_embedding/python/ops/dynamic_embedding_ops.py">View source</a>
+<a target="_blank" href="https://github.com/tensorflow/recommenders-addons/tree/master/tensorflow_recommenders_addons/embedding_variable/python/ops/embedding_variable_ops.py">View source</a>
 
 ``` python
 __init__(
-    params,
-    ids,
-    max_norm,
-    *args,
-    **kwargs
+    embedding_dim,
+    initializer,
+    trainable=(True),
+    collections=None,
+    caching_device=None,
+    name=None,
+    ktype=None,
+    vtype=None,
+    variable_def=None,
+    import_scope=None,
+    constraint=None,
+    distribute_strategy=None,
+    synchronization=None,
+    aggregation=None,
+    invalid_key=-1
 )
 ```
 
-Creates an empty `TrainableWrapper` object.©
+Creates a variable.
 
-Creates a group of tables placed on devices,
-the type of its keys and values are specified by key_dtype
-and value_dtype, respectively.
 
 #### Args:
 
 
-* <b>`params`</b>: A dynamic_embedding.Variable instance.
-* <b>`ids`</b>: A tensor with any shape as same dtype of params.key_dtype.
-* <b>`max_norm`</b>: If not `None`, each values is clipped if its l2-norm is larger
-  than this value.
-other parameters is same with ResourceVariable.
+* <b>`embedding_dim`</b>: EmbeddingVarible's dimension.
+* <b>`trainable`</b>: If `True`, the default, also adds the variable to the graph
+  collection `GraphKeys.TRAINABLE_VARIABLES`. This collection is used as
+  the default list of variables to use by the `Optimizer` classes.
+* <b>`collections`</b>: List of graph collections keys. The new variable is added to
+  these collections. Defaults to `[GraphKeys.GLOBAL_VARIABLES]`.
+* <b>`name`</b>: Optional name for the variable. Defaults to `'EmbeddingVariable'`
+  and gets uniquified automatically.
+* <b>`ktype`</b>: If set, EV's key will be converted to the given type.
+  If None, int32 will be used.
+* <b>`vtype`</b>: If set, initial_value will be converted to the given type.
+  If None, either the datatype will be kept (if initial_value is
+  a Tensor) or float32 will be used (if it is a Python object convertible
+  to a Tensor).
+* <b>`variable_def`</b>: `VariableDef` protocol buffer. If not None, recreates the
+  `EmbeddingVariable` object with its contents. `variable_def` and other
+  arguments (except for import_scope) are mutually exclusive.
+* <b>`import_scope`</b>: Optional `string`. Name scope to add to the
+  EmbeddingVariable. Only used when `variable_def` is provided.
+* <b>`constraint`</b>: An optional projection function to be applied to the variable
+  after being updated by an `Optimizer` (e.g. used to implement norm
+  constraints or value constraints for layer weights). The function must
+  take as input the unprojected Tensor representing the value of the
+  variable and return the Tensor for the projected value
+  (which must have the same shape). Constraints are not safe to
+  use when doing asynchronous distributed training.
 
-#### Returns:
 
-A `TrainableWrapper` object which is a subclass of ResourceVariable.
+
+#### Eager Compatibility
+When Eager Execution is enabled, the default for the `collections` argument
+is None, which signifies that this EmbeddingVariable will not be added to any
+collections.
+
 
 
 
@@ -209,6 +278,11 @@ Returns the Tensor used as the initial value for the variable.
 The op responsible for initializing this variable.
 
 
+<h3 id="invalid_key"><code>invalid_key</code></h3>
+
+
+
+
 <h3 id="name"><code>name</code></h3>
 
 The name of the handle for this variable.
@@ -217,6 +291,11 @@ The name of the handle for this variable.
 <h3 id="op"><code>op</code></h3>
 
 The op for this variable.
+
+
+<h3 id="optional_restore"><code>optional_restore</code></h3>
+
+A hint to restore assertions that this object is optional.
 
 
 <h3 id="shape"><code>shape</code></h3>
@@ -1659,12 +1738,13 @@ __xor__(
 
 <h3 id="assign"><code>assign</code></h3>
 
+<a target="_blank" href="https://github.com/tensorflow/recommenders-addons/tree/master/tensorflow_recommenders_addons/embedding_variable/python/ops/embedding_variable_ops.py">View source</a>
+
 ``` python
 assign(
     value,
     use_locking=None,
-    name=None,
-    read_value=(True)
+    name=None
 )
 ```
 
@@ -1691,12 +1771,13 @@ mode it will return `None`.
 
 <h3 id="assign_add"><code>assign_add</code></h3>
 
+<a target="_blank" href="https://github.com/tensorflow/recommenders-addons/tree/master/tensorflow_recommenders_addons/embedding_variable/python/ops/embedding_variable_ops.py">View source</a>
+
 ``` python
 assign_add(
     delta,
     use_locking=None,
-    name=None,
-    read_value=(True)
+    name=None
 )
 ```
 
@@ -1723,12 +1804,13 @@ mode it will return `None`.
 
 <h3 id="assign_sub"><code>assign_sub</code></h3>
 
+<a target="_blank" href="https://github.com/tensorflow/recommenders-addons/tree/master/tensorflow_recommenders_addons/embedding_variable/python/ops/embedding_variable_ops.py">View source</a>
+
 ``` python
 assign_sub(
     delta,
     use_locking=None,
-    name=None,
-    read_value=(True)
+    name=None
 )
 ```
 
@@ -1850,6 +1932,8 @@ distinct.
 
 <h3 id="eval"><code>eval</code></h3>
 
+<a target="_blank" href="https://github.com/tensorflow/recommenders-addons/tree/master/tensorflow_recommenders_addons/embedding_variable/python/ops/embedding_variable_ops.py">View source</a>
+
 ``` python
 eval(session=None)
 ```
@@ -1870,6 +1954,8 @@ Instructions for updating:
 Use ref() instead.
 
 <h3 id="from_proto"><code>from_proto</code></h3>
+
+<a target="_blank" href="https://github.com/tensorflow/recommenders-addons/tree/master/tensorflow_recommenders_addons/embedding_variable/python/ops/embedding_variable_ops.py">View source</a>
 
 ``` python
 @staticmethod
@@ -1934,6 +2020,8 @@ has run.
 
 
 <h3 id="is_initialized"><code>is_initialized</code></h3>
+
+<a target="_blank" href="https://github.com/tensorflow/recommenders-addons/tree/master/tensorflow_recommenders_addons/embedding_variable/python/ops/embedding_variable_ops.py">View source</a>
 
 ``` python
 is_initialized(name=None)
@@ -2013,31 +2101,18 @@ numpy()
 
 
 
-<h3 id="prefetch_values"><code>prefetch_values</code></h3>
-
-<a target="_blank" href="https://github.com/tensorflow/recommenders-addons/tree/master/tensorflow_recommenders_addons/dynamic_embedding/python/ops/dynamic_embedding_ops.py">View source</a>
-
-``` python
-prefetch_values(update=(False))
-```
-
-
-
-
 <h3 id="read_value"><code>read_value</code></h3>
 
-<a target="_blank" href="https://github.com/tensorflow/recommenders-addons/tree/master/tensorflow_recommenders_addons/dynamic_embedding/python/ops/dynamic_embedding_ops.py">View source</a>
+<a target="_blank" href="https://github.com/tensorflow/recommenders-addons/tree/master/tensorflow_recommenders_addons/embedding_variable/python/ops/embedding_variable_ops.py">View source</a>
 
 ``` python
-read_value(do_prefetch=(True))
+read_value()
 ```
 
 Constructs an op which reads the value of this variable.
 
 Should be used when there are multiple reads, or when it is desirable to
 read the value only after some condition is true.
-Args:
-  do_prefetch: get value from `params` before reading, if True
 
 #### Returns:
 
@@ -2091,6 +2166,40 @@ original Variable.
 >>> x.ref().deref()
 <tf.Variable 'Variable:0' shape=() dtype=int32, numpy=5>
 ```
+
+<h3 id="restore"><code>restore</code></h3>
+
+<a target="_blank" href="https://github.com/tensorflow/recommenders-addons/tree/master/tensorflow_recommenders_addons/embedding_variable/python/ops/embedding_variable_ops.py">View source</a>
+
+``` python
+restore(
+    restored_tensors,
+    restored_shapes
+)
+```
+
+Restores this object from 'restored_tensors'.
+
+
+#### Args:
+
+
+* <b>`restored_tensors`</b>: the tensors that were loaded from a checkpoint
+* <b>`restored_shapes`</b>: the shapes this object should conform to after
+  restore, or None.
+
+
+#### Returns:
+
+An operation that restores the state of the object.
+
+
+
+#### Raises:
+
+
+* <b>`ValueError`</b>: If the object cannot be restored using the provided
+  parameters.
 
 <h3 id="scatter_add"><code>scatter_add</code></h3>
 
@@ -2595,18 +2704,9 @@ Overrides the shape for this variable.
 
 * <b>`shape`</b>: the `TensorShape` representing the overridden shape.
 
-<h3 id="size"><code>size</code></h3>
-
-<a target="_blank" href="https://github.com/tensorflow/recommenders-addons/tree/master/tensorflow_recommenders_addons/dynamic_embedding/python/ops/dynamic_embedding_ops.py">View source</a>
-
-``` python
-size()
-```
-
-
-
-
 <h3 id="sparse_read"><code>sparse_read</code></h3>
+
+<a target="_blank" href="https://github.com/tensorflow/recommenders-addons/tree/master/tensorflow_recommenders_addons/embedding_variable/python/ops/embedding_variable_ops.py">View source</a>
 
 ``` python
 sparse_read(
@@ -2620,11 +2720,13 @@ Reads the value of this variable sparsely, using `gather`.
 
 <h3 id="to_proto"><code>to_proto</code></h3>
 
+<a target="_blank" href="https://github.com/tensorflow/recommenders-addons/tree/master/tensorflow_recommenders_addons/embedding_variable/python/ops/embedding_variable_ops.py">View source</a>
+
 ``` python
 to_proto(export_scope=None)
 ```
 
-Converts a `ResourceVariable` to a `VariableDef` protocol buffer.
+Converts a `EmbeddingVariable` to a `VariableDef` protocol buffer.
 
 
 #### Args:
@@ -2641,33 +2743,24 @@ Converts a `ResourceVariable` to a `VariableDef` protocol buffer.
 
 #### Returns:
 
-A `VariableDef` protocol buffer, or `None` if the `Variable` is not
+A `VariableDef` protocol buffer, or `None` if the `EmbeddingVariable` is not
 in the specified name scope.
 
 
-<h3 id="transform"><code>transform</code></h3>
+<h3 id="total_count"><code>total_count</code></h3>
 
-<a target="_blank" href="https://github.com/tensorflow/recommenders-addons/tree/master/tensorflow_recommenders_addons/dynamic_embedding/python/ops/dynamic_embedding_ops.py">View source</a>
-
-``` python
-transform(result)
-```
-
-
-
-
-<h3 id="update_op"><code>update_op</code></h3>
-
-<a target="_blank" href="https://github.com/tensorflow/recommenders-addons/tree/master/tensorflow_recommenders_addons/dynamic_embedding/python/ops/dynamic_embedding_ops.py">View source</a>
+<a target="_blank" href="https://github.com/tensorflow/recommenders-addons/tree/master/tensorflow_recommenders_addons/embedding_variable/python/ops/embedding_variable_ops.py">View source</a>
 
 ``` python
-update_op(v0=None)
+total_count()
 ```
 
-
+The shape of this variable.
 
 
 <h3 id="value"><code>value</code></h3>
+
+<a target="_blank" href="https://github.com/tensorflow/recommenders-addons/tree/master/tensorflow_recommenders_addons/embedding_variable/python/ops/embedding_variable_ops.py">View source</a>
 
 ``` python
 value()
