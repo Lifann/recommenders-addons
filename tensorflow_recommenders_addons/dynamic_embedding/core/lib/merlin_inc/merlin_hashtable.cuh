@@ -273,11 +273,14 @@ class HashTable {
     if (n == 0) {
       return;
     }
-
+    std::cerr << "n :" << n << " capacity: " << capacity() << std::endl;
     while (!reach_max_capacity_ &&
            fast_load_factor(n, stream) > options_.max_load_factor) {
+            std::cerr << "reserve : " << capacity() << std::endl;
       reserve(capacity() * 2, stream);
     }
+
+    std::cerr << "after fast load: " << capacity() << std::endl;
 
     if (!ignore_evict_strategy) {
       check_evict_strategy(metas);
@@ -1307,6 +1310,7 @@ class HashTable {
    */
   void reserve(const size_type new_capacity, cudaStream_t stream = 0) {
     if (reach_max_capacity_ || new_capacity > options_.max_capacity) {
+      reach_max_capacity_ = (capacity() * 2 > options_.max_capacity);
       return;
     }
 

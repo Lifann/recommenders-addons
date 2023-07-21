@@ -59,7 +59,6 @@ class HashTableGpuOp : public OpKernel {
       OP_REQUIRES_OK(
           ctx, ctx->allocate_temp(tensorflow::DT_STRING,
                                   tensorflow::TensorShape({2}), &table_, attr));
-
       OP_REQUIRES_OK(ctx, cinfo_.Init(ctx->resource_manager(), def(),
                                       use_node_name_sharing_));
     }

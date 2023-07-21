@@ -116,11 +116,11 @@ class LocalKVFile : public BaseKVFile<K, V, M> {
               M* metas) override {
     size_t nread_keys =
         fread(keys, sizeof(K), static_cast<size_t>(n), keys_fp_);
-    size_t nread_vecs =
+    size_t nread_values =
         fread(vectors, sizeof(V) * dim, static_cast<size_t>(n), values_fp_);
     size_t nread_metas =
         fread(metas, sizeof(M), static_cast<size_t>(n), metas_fp_);
-    if (nread_keys != nread_vecs || nread_keys != nread_metas) {
+    if (nread_keys != nread_values || nread_keys != nread_metas) {
       return 0;
     }
     return nread_keys;

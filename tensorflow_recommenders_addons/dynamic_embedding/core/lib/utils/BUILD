@@ -5,8 +5,8 @@ cc_library(
     hdrs = [
       "cuda_utils.cuh",
     ],
-    linkopts = [
-        "-L/usr/local/cuda-11.2/targets/x86_64-linux/lib/stubs",
-        "-lnvidia-ml",
-    ],
+    # linkopts = [
+    #     "-L/usr/local/cuda-11.2/targets/x86_64-linux/lib/stubs",
+    #     "-lnvidia-ml",
+    # ],
 )

@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "tensorflow_recommenders_addons/dynamic_embedding/core/kernels/lookup_impl/lookup_table_op_gpu.h"
+// #include "tensorflow_recommenders_addons/dynamic_embedding/core/kernels/lookup_impl/lookup_table_op_gpu.h"
+#include "tensorflow_recommenders_addons/dynamic_embedding/core/kernels/lookup_impl/lookup_table_op_hkv.h"
+
 namespace tensorflow {
 namespace recommenders_addons {
 namespace lookup {
@@ -24,9 +26,10 @@ namespace gpu {
 
 
 DEFINE_PURE_GPU_HASHTABLE(int64, float);
+DEFINE_PURE_GPU_HASHTABLE(int64, int8);
 DEFINE_PURE_GPU_HASHTABLE(int64, int32);
 DEFINE_PURE_GPU_HASHTABLE(int64, int64);
-DEFINE_PURE_GPU_HASHTABLE(int64, int64);
+DEFINE_PURE_GPU_HASHTABLE(int64, Eigen::half);
 
 #undef DEFINE_PURE_GPU_HASHTABLE
 

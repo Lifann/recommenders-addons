@@ -149,6 +149,7 @@ void initialize_buckets(Table<K, V, M>** table, const size_t start,
       CUDA_CHECK(cudaMalloc(&((*table)->slices[i]), slice_real_size));
       (*table)->remaining_hbm_for_vectors -= slice_real_size;
     } else {
+      std::cerr << "not pure hbm: " << (*table)->remaining_hbm_for_vectors << " " << slice_real_size << std::endl;
       (*table)->is_pure_hbm = false;
       CUDA_CHECK(
           cudaMallocHost(&((*table)->slices[i]), slice_real_size,
@@ -240,6 +241,7 @@ void create_table(Table<K, V, M>** table, const size_t dim,
   (*table)->tile_size = tile_size;
   (*table)->is_pure_hbm = true;
   (*table)->bytes_per_slice = get_slice_size<K, V, M>(table);
+  std::cerr << "create table init size: " << init_size << " max size: " << max_size << " max_hbm_for_vector: " << max_hbm_for_vectors << std::endl;
 
   // The bucket number will be the minimum needed for saving memory if no
   // rehash.

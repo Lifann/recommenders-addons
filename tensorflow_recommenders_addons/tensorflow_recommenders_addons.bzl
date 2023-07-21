@@ -47,6 +47,8 @@ def custom_op_library(
             "-pthread",
             "-funroll-loops",
             "-std=c++14",
+            "-g",
+            "-O0",
             D_GLIBCXX_USE_CXX11_ABI,
             DTF_VERSION_INTEGER,
         ],
@@ -59,6 +61,8 @@ def custom_op_library(
             "-nvcc_options=relaxed-constexpr",
             "-nvcc_options=ftz=true",
             "-std=c++14",
+            "-g",
+            "-O0",
         ])
         cuda_deps = deps + if_cuda_is_configured(cuda_deps) + if_cuda_is_configured([
             "@local_config_cuda//cuda:cuda_headers",
